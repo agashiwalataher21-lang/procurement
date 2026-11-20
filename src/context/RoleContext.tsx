@@ -34,17 +34,6 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       .then((res) => res.json())
       .then(async (data) => {
         if (!data.authenticated) {
-          if (data.setupRequired) {
-            await fetch("/api/auth/setup", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                email: "admin@baitalhadaf.ae",
-                name: "Admin",
-                password: "Password123!",
-              }),
-            }).catch(() => {});
-          }
           await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

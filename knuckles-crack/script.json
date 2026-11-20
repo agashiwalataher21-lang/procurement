@@ -1,0 +1,27 @@
+{
+  "title": "What Happens When You Crack Your Knuckles?",
+  "voice": "am_michael",
+  "speed": 1.0,
+  "lead": 0.45,
+  "outro": 0.9,
+  "gap": 0.28,
+  "music": "bed",
+  "sources": [
+    "Swanson, S. C. (2014). Knuckle cracking and hand function.",
+    "Castellini, C., & Wilke, H. (1994). The effects of passive joint manipulation on joint stability."
+  ],
+  "lines": [
+    { "text": "You know that satisfying crack when you bend your fingers?", "caps": "YOU KNOW THAT *SATISFYING | CRACK WHEN YOU *BEND | YOUR *FINGERS" },
+    { "text": "But what is actually happening inside your joint?", "caps": "BUT WHAT IS *ACTUALLY | HAPPENING *INSIDE | YOUR *JOINT" },
+    { "text": "Your knuckles are full of synovial fluid, a natural lubricant.", "caps": "YOUR *KNUCKLES | ARE FULL OF *SYNOVIAL | FLUID, A *NATURAL" },
+    { "text": "It keeps your bones moving smoothly without grinding.", "caps": "IT KEEPS YOUR *BONES | MOVING *SMOOTHLY | WITHOUT *GRINDING" },
+    { "text": "When you crack your knuckles, you are stretching the joint.", "caps": "WHEN YOU *CRACK | YOUR KNUCKLES, | YOU ARE *STRETCHING" },
+    { "text": "That pop sound is a bubble of gas forming in the fluid.", "caps": "THAT *POP SOUND IS | A *BUBBLE | OF GAS *FORMING" },
+    { "text": "Nitrogen and carbon dioxide rush in, creating a vacuum pocket.", "caps": "NITROGEN AND *CARBON | DIOXIDE *RUSH IN | CREATING A *VACUUM" },
+    { "text": "So does cracking cause arthritis? No, that is a total myth.", "caps": "SO DOES *CRACKING | CAUSE *ARTHRITIS | *NO, THAT IS A *TOTAL" },
+    { "text": "Your cartilage is tough and is not worn down by this.", "caps": "YOUR *CARTILAGE | IS *TOUGH AND | IS NOT *WORN" },
+    { "text": "But if you crack them nonstop, all day, every day...", "caps": "BUT *IF YOU *CRACK | THEM *NONSTOP | ALL DAY, *EVERY" },
+    { "text": "You might irritate the joint or weaken your grip over time.", "caps": "YOU MIGHT *IRRITATE | THE *JOINT OR | WEAKEN YOUR *GRIP" },
+    { "text": "So maybe, just do not overdo it.", "caps": "SO *MAYBE... | JUST *DO NOT | OVERDO *IT" }
+  ]
+}

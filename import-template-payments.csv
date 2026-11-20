@@ -1,0 +1,5 @@
+Payment Number,Payment Date,Supplier ID,Target Type,Target ID,Amount,Currency,Payment Method,Bank Reference,Recorded By,Notes
+PAY-2024-0001,2026-11-01,SUP-001,PO,PO-2024-001,5000.00,AED,BANK_TRANSFER,BT-2024-11001,Accountant,Advance payment for PO
+PAY-2024-0002,2026-11-02,SUP-002,INVOICE,INV-SUP-2026-0005,200.00,AED,CHEQUE,CHQ-99120,Accountant,Partial invoice payment
+PAY-2024-0003,2026-11-03,SUP-001,PO,PO-2024-004,1500.00,AED,BANK_TRANSFER,BT-2024-11002,Accountant,Advance payment
+PAY-2024-0004,2026-11-04,SUP-003,INVOICE,INV-EUR-2024-123,2500.00,EUR,BANK_TRANSFER,BT-2024-11003,Accountant,Invoice settlement

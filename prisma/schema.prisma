@@ -1,0 +1,645 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Supplier {
+  id              String              @id @default(cuid())
+  supplierId      String              @unique
+  name            String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  address         String?
+  country         String              @default("UAE")
+  trn             String?
+  currency        String              @default("AED")
+  paymentTerms    String              @default("30 Days")
+  bankDetails     String?
+  notes           String?
+  status          String              @default("ACTIVE")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  documents       Document[]
+  grns            GoodsReceivedNote[]
+  payments        Payment[]
+  invoices        PurchaseInvoice[]
+  purchaseOrders  PurchaseOrder[]
+  purchaseReturns PurchaseReturn[]
+  quotations      SupplierQuotation[]
+}
+
+model Product {
+  id                       String               @id @default(cuid())
+  itemCode                 String               @unique
+  altItemCode              String?
+  oemCode                  String?
+  barcode                  String?
+  itemName                 String
+  description              String?
+  brand                    String               @default("Generic")
+  category                 String               @default("Motorcycle Spare Parts")
+  modelCompatibility       String?
+  unitOfMeasurement        String               @default("PCS")
+  purchaseUnit             String               @default("PCS")
+  stockUnit                String               @default("PCS")
+  conversionFactor         Float                @default(1.0)
+  defaultPurchasePrice     Int                  @default(0)
+  defaultPurchasePriceFils Int                  @default(0)
+  currency                 String               @default("AED")
+  minStock                 Float                @default(10.0)
+  maxStock                 Float                @default(100.0)
+  reorderLevel             Float                @default(25.0)
+  safetyStock              Float                @default(15.0)
+  supplierLeadTime         Int                  @default(14)
+  avgDailyUsage            Float                @default(0.0)
+  preferredSupplierId      String?
+  currentStock             Float                @default(0.0)
+  productPicture           String?
+  status                   String               @default("ACTIVE")
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  grnItems                 GrnItem[]
+  invoiceItems             InvoiceItem[]
+  landedCostItems          LandedCostItem[]
+  poItems                  PurchaseOrderItem[]
+  returnItems              PurchaseReturnItem[]
+  salesItems               SalesInvoiceItem[]
+  stockMovements           StockMovement[]
+  quotations               SupplierQuotation[]
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(cuid())
+  poNumber             String              @unique
+  supplierId           String
+  shipmentId           String?
+  orderDate            DateTime            @default(now())
+  expectedDeliveryDate DateTime
+  revisedDeliveryDate  DateTime?
+  status               String              @default("DRAFT")
+  currency             String              @default("AED")
+  exchangeRate         Float               @default(1.0)
+  subtotal             Int                 @default(0)
+  discountAmount       Int                 @default(0)
+  shippingAmount       Int                 @default(0)
+  otherExpensesAmount  Int                 @default(0)
+  vatAmount            Int                 @default(0)
+  grandTotal           Int                 @default(0)
+  notes                String?
+  createdBy            String              @default("Admin")
+  approvedBy           String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  documents            Document[]
+  grns                 GoodsReceivedNote[]
+  landedCosts          LandedCost[]
+  payments             Payment[]
+  invoices             PurchaseInvoice[]
+  shipment             Shipment?           @relation(fields: [shipmentId], references: [id])
+  supplier             Supplier            @relation(fields: [supplierId], references: [id])
+  items                PurchaseOrderItem[]
+  purchaseReturns      PurchaseReturn[]
+
+  @@index([orderDate])
+  @@index([supplierId])
+}
+
+model PurchaseOrderItem {
+  id            String        @id @default(cuid())
+  poId          String
+  productId     String?
+  itemCode      String
+  itemName      String
+  quantity      Float
+  receivedQty   Float         @default(0.0)
+  invoicedQty   Float         @default(0.0)
+  unitPrice     Int
+  discount      Int           @default(0)
+  tax           Int           @default(0)
+  total         Int
+  product       Product?      @relation(fields: [productId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([poId])
+}
+
+model Payment {
+  id            String           @id @default(cuid())
+  paymentNumber String           @unique
+  supplierId    String
+  poId          String?
+  invoiceId     String?
+  paymentDate   DateTime         @default(now())
+  amount        Int
+  currency      String           @default("AED")
+  exchangeRate  Float            @default(1.0)
+  paymentMethod String           @default("BANK_TRANSFER")
+  bankReference String?
+  chequeNumber  String?
+  receiptUrl    String?
+  notes         String?
+  recordedBy    String           @default("Accountant")
+  status        String           @default("APPROVED")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  documents     Document[]
+  invoice       PurchaseInvoice? @relation(fields: [invoiceId], references: [id])
+  purchaseOrder PurchaseOrder?   @relation(fields: [poId], references: [id])
+  supplier      Supplier         @relation(fields: [supplierId], references: [id])
+}
+
+model GoodsReceivedNote {
+  id              String           @id @default(cuid())
+  grnNumber       String           @unique
+  poId            String
+  supplierId      String
+  receivedDate    DateTime         @default(now())
+  receivedBy      String           @default("Storekeeper")
+  notes           String?
+  status          String           @default("CONFIRMED")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  documents       Document[]
+  supplier        Supplier         @relation(fields: [supplierId], references: [id])
+  purchaseOrder   PurchaseOrder    @relation(fields: [poId], references: [id])
+  items           GrnItem[]
+  purchaseReturns PurchaseReturn[]
+}
+
+model GrnItem {
+  id                    String            @id @default(cuid())
+  grnId                 String
+  productId             String?
+  itemCode              String
+  itemName              String
+  orderedQuantity       Float
+  previouslyReceivedQty Float             @default(0.0)
+  newlyReceivedQty      Float
+  pendingQty            Float
+  condition             String            @default("Good")
+  notes                 String?
+  product               Product?          @relation(fields: [productId], references: [id])
+  goodsReceivedNote     GoodsReceivedNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseInvoice {
+  id                  String         @id @default(cuid())
+  invoiceNumber       String         @unique
+  supplierId          String
+  poId                String?
+  grnId               String?
+  invoiceDate         DateTime       @default(now())
+  dueDate             DateTime
+  status              String         @default("CONFIRMED")
+  currency            String         @default("AED")
+  exchangeRate        Float          @default(1.0)
+  subtotal            Int            @default(0)
+  discountAmount      Int            @default(0)
+  shippingAmount      Int            @default(0)
+  otherExpensesAmount Int            @default(0)
+  vatAmount           Int            @default(0)
+  grandTotal          Int            @default(0)
+  notes               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  documents           Document[]
+  items               InvoiceItem[]
+  payments            Payment[]
+  purchaseOrder       PurchaseOrder? @relation(fields: [poId], references: [id])
+  supplier            Supplier       @relation(fields: [supplierId], references: [id])
+
+  @@index([invoiceDate])
+  @@index([supplierId])
+}
+
+model InvoiceItem {
+  id              String          @id @default(cuid())
+  invoiceId       String
+  productId       String?
+  itemCode        String
+  itemName        String
+  quantity        Float
+  unitPrice       Int
+  discount        Int             @default(0)
+  tax             Int             @default(0)
+  total           Int
+  isExtraFromPo   Boolean         @default(false)
+  product         Product?        @relation(fields: [productId], references: [id])
+  purchaseInvoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([invoiceId])
+}
+
+model StockMovement {
+  id                  String   @id @default(cuid())
+  productId           String
+  itemCode            String
+  date                DateTime @default(now())
+  movementType        String
+  quantity            Float
+  unitCost            Int      @default(0)
+  totalCost           Int      @default(0)
+  referenceNumber     String
+  location            String   @default("Dubai Logistics Hub")
+  responsibleEmployee String   @default("Storekeeper")
+  notes               String?
+  createdAt           DateTime @default(now())
+  product             Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseReturn {
+  id                     String               @id @default(cuid())
+  returnNumber           String               @unique
+  supplierId             String
+  poId                   String?
+  grnId                  String?
+  returnDate             DateTime             @default(now())
+  status                 String               @default("CONFIRMED")
+  reason                 String
+  supplierReference      String?
+  expectedCreditNote     Int                  @default(0)
+  actualCreditNote       Int                  @default(0)
+  remainingCreditBalance Int                  @default(0)
+  responsibleEmployee    String               @default("Purchase Manager")
+  notes                  String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  grn                    GoodsReceivedNote?   @relation(fields: [grnId], references: [id])
+  purchaseOrder          PurchaseOrder?       @relation(fields: [poId], references: [id])
+  supplier               Supplier             @relation(fields: [supplierId], references: [id])
+  items                  PurchaseReturnItem[]
+}
+
+model PurchaseReturnItem {
+  id               String         @id @default(cuid())
+  returnId         String
+  productId        String?
+  itemCode         String
+  itemName         String
+  returnedQuantity Float
+  unitPrice        Int
+  totalAmount      Int
+  reason           String?
+  product          Product?       @relation(fields: [productId], references: [id])
+  purchaseReturn   PurchaseReturn @relation(fields: [returnId], references: [id], onDelete: Cascade)
+}
+
+model LandedCost {
+  id                   String           @id @default(cuid())
+  landedCostNumber     String           @unique
+  poId                 String?
+  shipmentId           String?
+  date                 DateTime         @default(now())
+  allocationMethod     String           @default("BY_VALUE")
+  totalPurchaseCost    Int              @default(0)
+  totalFreightAmount   Int              @default(0)
+  totalCustomsDuty     Int              @default(0)
+  totalClearingCharges Int              @default(0)
+  totalLocalTransport  Int              @default(0)
+  totalOtherExpenses   Int              @default(0)
+  totalLandedExpenses  Int              @default(0)
+  grandTotalLandedCost Int              @default(0)
+  status               String           @default("CONFIRMED")
+  notes                String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  shipment             Shipment?        @relation(fields: [shipmentId], references: [id])
+  purchaseOrder        PurchaseOrder?   @relation(fields: [poId], references: [id])
+  items                LandedCostItem[]
+}
+
+model LandedCostItem {
+  id                  String     @id @default(cuid())
+  landedCostId        String
+  productId           String?
+  itemCode            String
+  itemName            String
+  quantity            Float
+  purchaseUnitPrice   Int
+  purchaseTotal       Int
+  allocatedExpense    Int
+  finalLandedCost     Int
+  finalUnitLandedCost Int
+  product             Product?   @relation(fields: [productId], references: [id])
+  landedCost          LandedCost @relation(fields: [landedCostId], references: [id], onDelete: Cascade)
+}
+
+model Shipment {
+  id                String          @id @default(cuid())
+  shipmentNumber    String          @unique
+  containerNumber   String?
+  billOfLading      String?
+  shippingCompany   String?
+  portOfLoading     String?
+  portOfDischarge   String          @default("Jebel Ali Port, Dubai")
+  etd               DateTime?
+  eta               DateTime?
+  actualArrivalDate DateTime?
+  status            String          @default("IN_TRANSIT")
+  cargoStage        String          @default("WAREHOUSE") // ORDERED, RECEIVED, WAREHOUSE, HANDED_TO_CARGO, SHIPPED, DELIVERED
+  cargoDate         DateTime?
+  destination       String?
+  cartonsCount      Int?            @default(0)
+  grossWeightKg     Float?          @default(0.0)
+  cargoCharges      Int?            @default(0)
+  shippingCost      Int             @default(0)
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  landedCosts       LandedCost[]
+  purchaseOrders    PurchaseOrder[]
+}
+
+model SupplierQuotation {
+  id                 String    @id @default(cuid())
+  supplierId         String
+  productId          String
+  quotationReference String?
+  quotedPrice        Int
+  previousPrice      Int?
+  currency           String    @default("AED")
+  moq                Float     @default(1.0)
+  leadTimeDays       Int       @default(14)
+  paymentTerms       String    @default("Net 30")
+  validUntil         DateTime?
+  isCheapest         Boolean   @default(false)
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  product            Product   @relation(fields: [productId], references: [id])
+  supplier           Supplier  @relation(fields: [supplierId], references: [id])
+}
+
+model Document {
+  id         String             @id @default(cuid())
+  title      String
+  docType    String             @default("INVOICE")
+  fileUrl    String
+  fileSize   String             @default("1.2 MB")
+  mimeType   String             @default("application/pdf")
+  supplierId String?
+  poId       String?
+  paymentId  String?
+  grnId      String?
+  invoiceId  String?
+  uploadedBy String             @default("Admin")
+  createdAt  DateTime           @default(now())
+  invoice    PurchaseInvoice?   @relation(fields: [invoiceId], references: [id])
+  grn        GoodsReceivedNote? @relation(fields: [grnId], references: [id])
+  payment    Payment?           @relation(fields: [paymentId], references: [id])
+  po         PurchaseOrder?     @relation(fields: [poId], references: [id])
+  supplier   Supplier?          @relation(fields: [supplierId], references: [id])
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  employeeName      String   @default("Admin")
+  module            String
+  transactionNumber String
+  action            String
+  previousValue     String?
+  updatedValue      String?
+  timestamp         DateTime @default(now())
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  title         String
+  message       String
+  type          String   @default("INFO")
+  isRead        Boolean  @default(false)
+  linkUrl       String?
+  recipientRole String   @default("ALL")
+  createdAt     DateTime @default(now())
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model BankAccount {
+  id             String            @id @default(cuid())
+  accountName    String
+  bankName       String
+  accountNumber  String            @unique
+  iban           String?
+  accountType    String            @default("CURRENT")
+  currency       String            @default("AED")
+  openingBalance Int               @default(0)
+  status         String            @default("ACTIVE")
+  notes          String?
+  classifiedBy   String            @default("BANK")
+  reconciledUpTo DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  transactions   BankTransaction[]
+}
+
+model BankTransaction {
+  id                String      @id @default(cuid())
+  bankAccountId     String
+  transactionNumber String?     @unique
+  date              DateTime    @default(now())
+  description       String
+  reference         String?
+  type              String      @default("DEBIT")
+  amount            Int
+  currency          String      @default("AED")
+  category          String      @default("OTHER")
+  paymentId         String?
+  supplierId        String?
+  status            String      @default("CLEARED")
+  notes             String?
+  recordedBy        String      @default("Accountant")
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  bankAccount       BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  name           String
+  type           String
+  balanceType    String        @default("NORMAL_DEBIT")
+  bankAccountId  String?
+  supplierId     String?
+  openingBalance Int           @default(0)
+  status         String        @default("ACTIVE")
+  isSystem       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  journalLines   JournalLine[]
+}
+
+model JournalEntry {
+  id            String        @id @default(cuid())
+  journalNumber String        @unique
+  date          DateTime      @default(now())
+  description   String
+  sourceType    String
+  sourceId      String?
+  status        String        @default("POSTED")
+  createdBy     String        @default("Admin")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  expense       Expense?
+  lines         JournalLine[]
+
+  @@index([sourceType, sourceId])
+  @@index([date])
+}
+
+model JournalLine {
+  id        String       @id @default(cuid())
+  journalId String
+  accountId String
+  debit     Int          @default(0)
+  credit    Int          @default(0)
+  currency  String       @default("AED")
+  account   Account      @relation(fields: [accountId], references: [id])
+  journal   JournalEntry @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  @@index([journalId])
+  @@index([accountId])
+}
+
+model Expense {
+  id             String        @id @default(cuid())
+  expenseNumber  String        @unique
+  date           DateTime      @default(now())
+  category       String
+  accountId      String
+  amount         Int
+  currency       String        @default("AED")
+  paymentMethod  String        @default("CASH")
+  bankAccountId  String?
+  supplierId     String?
+  receiptUrl     String?
+  description    String
+  status         String        @default("PAID")
+  createdBy      String        @default("Admin")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  journalEntryId String?       @unique
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+}
+
+model SalesInvoice {
+  id             String             @id @default(cuid())
+  invoiceNumber  String             @unique
+  customerName   String
+  customerPhone  String?
+  customerEmail  String?
+  invoiceDate    DateTime           @default(now())
+  dueDate        DateTime?
+  currency       String             @default("AED")
+  exchangeRate   Float              @default(1.0)
+  subtotal       Int                @default(0)
+  discountAmount Int                @default(0)
+  vatAmount      Int                @default(0)
+  grandTotal     Int                @default(0)
+  status         String             @default("DRAFT")
+  source         String?
+  sourceId       String?
+  salesperson    String?
+  country        String?            @default("UAE")
+  notes          String?
+  createdBy      String             @default("Taher")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  items          SalesInvoiceItem[]
+  payments       SalesReceipt[]
+
+  @@index([invoiceDate])
+  @@index([customerName])
+}
+
+model SalesInvoiceItem {
+  id           String       @id @default(cuid())
+  invoiceId    String
+  productId    String?
+  itemCode     String
+  itemName     String
+  quantity     Float
+  unitPrice    Int
+  discount     Int          @default(0)
+  tax          Int          @default(0)
+  total        Int
+  salesperson  String?
+  product      Product?     @relation(fields: [productId], references: [id])
+  salesInvoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([invoiceId])
+}
+
+model SalesReceipt {
+  id             String        @id @default(cuid())
+  receiptNumber  String        @unique
+  salesInvoiceId String?
+  customerName   String
+  receiptDate    DateTime      @default(now())
+  amount         Int
+  currency       String        @default("AED")
+  paymentMethod  String        @default("BANK_TRANSFER")
+  bankReference  String?
+  status         String        @default("APPROVED")
+  recordedBy     String        @default("Taher")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  notes          String?
+  salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+
+  @@index([salesInvoiceId])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("VIEWER") // ADMIN, PURCHASER, ACCOUNTANT, STOREKEEPER, VIEWER
+  status       String    @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Currency {
+  id          String   @id @default(cuid())
+  code        String   @unique // e.g. "INR", "USD", "EUR", "AED"
+  name        String   // e.g. "Indian Rupee"
+  symbol      String   @default("") // e.g. "₹", "$", "€", "د.إ"
+  rateToAED   Float    @default(1.0) // 1 foreign currency unit = X AED (e.g. 0.0384615 for 26 INR per AED)
+  unitsPerAED Float    @default(1.0) // 1 AED = X foreign currency units (e.g. 26.0 for INR)
+  isBase      Boolean  @default(false) // true for AED
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+}
+
+

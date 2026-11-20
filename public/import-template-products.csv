@@ -1,0 +1,9 @@
+Item Code,Item Name,Brand,Category,UOM,Default Purchase Price,Currency,Min Stock,Max Stock,Reorder Level,Safety Stock,Supplier Lead Time,Description
+MP-001,Yamaha Brake Pad Set YZF-R15,Yamaha,Motorcycle Spare Parts,PCS,250.00,AED,50,200,30,15,14,Front brake pad set for YZF-R15 2020-2024
+MP-002,Honda Air Filter CBR500R,Honda,Motorcycle Spare Parts,PCS,180.00,AED,30,150,20,10,10,High flow air filter for CBR500R
+GP-001,Perkins Fuel Filter 404D-22,Perkins,Generator Spare Parts,PCS,350.00,AED,20,100,15,5,7,Fuel filter for Perkins 404D-22 engines
+GP-002,Mitsubishi Oil Filter 6D14,Mitsubishi,Generator Spare Parts,PCS,280.00,AED,25,120,18,8,8,Oil filter for Mitsubishi 6D14 generator sets
+MP-003,Suzuki Spark Plug CK2HRR-S90,Suzuki,Motorcycle Spare Parts,PCS,45.00,AED,100,500,75,30,5,Iridium spark plug for Suzuki motorcycles
+GP-003,Power Tech Coolant Filter,Power Tech,Generator Spare Parts,SET,450.00,AED,15,80,12,5,10,Coolant filtration system for Power Tech generators
+MP-004,Kawasaki Chain Sprocket Set,Kawasaki,Motorcycle Spare Parts,SET,1200.00,AED,10,50,8,3,21,Front and rear sprocket set for Kawasaki Ninja
+GP-004,Cummins Diesel Filter Set,Cummins,Generator Spare Parts,SET,850.00,AED,10,60,8,4,14,Complete fuel and oil filter set for Cummins generators

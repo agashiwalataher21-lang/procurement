@@ -19,6 +19,8 @@ export async function GET(request: Request) {
         { description: { contains: search } },
         { oemCode: { contains: search } },
         { barcode: { contains: search } },
+        { altItemCode: { contains: search } },
+        { modelCompatibility: { contains: search } },
       ];
     }
 
@@ -60,6 +62,9 @@ export async function POST(request: Request) {
       brand,
       category,
       unitOfMeasurement,
+      purchaseUnit,
+      stockUnit,
+      conversionFactor,
       defaultPurchasePrice = 0,
       currency,
       productPicture,
@@ -69,6 +74,11 @@ export async function POST(request: Request) {
       safetyStock = 15,
       supplierLeadTime = 14,
       avgDailyUsage = 0,
+      oemCode,
+      barcode,
+      alternativeItemCode,
+      modelCompatibility,
+      preferredSupplierId,
     } = body;
 
     if (!itemCode || !itemName) {
@@ -98,10 +108,13 @@ export async function POST(request: Request) {
       data: {
         itemCode,
         itemName,
-        description,
+        description: description || null,
         brand: brand || "Generic",
         category: category || "Motorcycle Spare Parts",
         unitOfMeasurement: unitOfMeasurement || "PCS",
+        purchaseUnit: purchaseUnit || unitOfMeasurement || "PCS",
+        stockUnit: stockUnit || unitOfMeasurement || "PCS",
+        conversionFactor: parseFloat(conversionFactor) || 1.0,
         defaultPurchasePrice: priceFils,
         currency: currency || "AED",
         productPicture: productPicture || null,
@@ -111,6 +124,11 @@ export async function POST(request: Request) {
         safetyStock: parseFloat(safetyStock) || 15,
         supplierLeadTime: parseInt(supplierLeadTime, 10) || 14,
         avgDailyUsage: parseFloat(avgDailyUsage) || 0,
+        oemCode: oemCode || null,
+        barcode: barcode || null,
+        altItemCode: alternativeItemCode || null,
+        modelCompatibility: modelCompatibility || null,
+        preferredSupplierId: preferredSupplierId || null,
       },
     });
 

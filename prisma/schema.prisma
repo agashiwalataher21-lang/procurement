@@ -72,6 +72,7 @@ model Product {
   stockMovements           StockMovement[]
   quotations               SupplierQuotation[]
   storeStocks              StoreStock[]
+  stockTransferItems       StockTransferItem[]
 }
 
 model PurchaseOrder {
@@ -562,6 +563,8 @@ model SalesInvoice {
   createdBy      String             @default("Taher")
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  customerId     String?
+  customer       Customer?          @relation(fields: [customerId], references: [id])
   items          SalesInvoiceItem[]
   payments       SalesReceipt[]
 
@@ -666,6 +669,50 @@ model StoreStock {
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([storeId, productId])
+}
+
+model Customer {
+  id              String         @id @default(cuid())
+  customerId      String         @unique
+  name            String
+  contactPerson   String?
+  phone           String?
+  email           String?
+  country         String         @default("UAE")
+  address         String?
+  trn             String?
+  paymentTerms    String         @default("Net 30")
+  creditLimit     Float          @default(50000.0)
+  currency        String         @default("AED")
+  openingBalance  Int            @default(0)
+  status          String         @default("ACTIVE")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  salesInvoices   SalesInvoice[]
+}
+
+model StockTransfer {
+  id              String             @id @default(cuid())
+  transferNumber  String             @unique
+  fromStoreId     String
+  toStoreId       String
+  transferDate    DateTime           @default(now())
+  status          String             @default("PENDING")
+  requestedBy     String             @default("Store Manager")
+  notes           String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  items           StockTransferItem[]
+}
+
+model StockTransferItem {
+  id              String        @id @default(cuid())
+  transferId      String
+  productId       String
+  quantity        Float
+  receivedQty     Float         @default(0.0)
+  transfer        StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id])
 }
 
 

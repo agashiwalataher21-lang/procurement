@@ -10,6 +10,20 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('=== Bait Al Hadaf System Cleanup ===');
+
+  // Phase 13 Strict Production Safeguards
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    console.error('FATAL: Destructive cleanup script is strictly BLOCKED in production / Vercel environments.');
+    process.exit(1);
+  }
+
+  const confirmFlag = process.argv.includes('--confirm-destructive-cleanup');
+  if (!confirmFlag) {
+    console.error('SAFETY BLOCK: To execute this destructive cleanup script, you must explicitly supply:');
+    console.error('   node scripts/cleanup-system.js --confirm-destructive-cleanup');
+    process.exit(1);
+  }
+
   const count = async (m, f) => prisma[m].count(f ? { where: f } : {});
 
   // --- Before counts (report only) ---

@@ -35,6 +35,31 @@ const defaultSettings: CompanySettings = {
 export default function SettingsPage() {
   const [settings, setSettings] = useState<CompanySettings>(defaultSettings);
   const [saving, setSaving] = useState(false);
+  const [stats, setStats] = useState({
+    activeSuppliers: 0,
+    totalProducts: 0,
+    pendingPOs: 0,
+  });
+
+  React.useEffect(() => {
+    async function fetchStats() {
+      try {
+        const [dashRes, prodRes, supRes] = await Promise.all([
+          fetch("/api/dashboard/stats").then((r) => r.json()).catch(() => ({})),
+          fetch("/api/products").then((r) => r.json()).catch(() => ({})),
+          fetch("/api/suppliers").then((r) => r.json()).catch(() => ({})),
+        ]);
+        setStats({
+          activeSuppliers: (supRes.suppliers || []).filter((s: any) => s.status === "ACTIVE").length,
+          totalProducts: (prodRes.products || []).length,
+          pendingPOs: dashRes.pendingPOs || 0,
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchStats();
+  }, []);
 
   const handleChange = (field: keyof CompanySettings, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -249,15 +274,15 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Active Suppliers</span>
-                <span className="font-bold text-blue-700 dark:text-blue-400">8</span>
+                <span className="font-bold text-blue-700 dark:text-blue-400">{stats.activeSuppliers}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Products</span>
-                <span className="font-bold text-purple-700 dark:text-purple-400">247</span>
+                <span className="font-bold text-purple-700 dark:text-purple-400">{stats.totalProducts}</span>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
                 <span className="text-sm text-slate-600 dark:text-slate-300">Pending POs</span>
-                <span className="font-bold text-amber-700 dark:text-amber-400">3</span>
+                <span className="font-bold text-amber-700 dark:text-amber-400">{stats.pendingPOs}</span>
               </div>
             </div>
           </div>

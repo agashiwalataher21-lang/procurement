@@ -261,12 +261,13 @@ export default function AccountsPage({ overrideTab }: { overrideTab?: string }) 
               <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                 {formatCurrency(summary?.totalAccountsPayable || 0)}
               </h3>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-rose-600 font-medium bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full">
-                  12 pending
-                </span>
-                <span className="text-xs text-slate-400">Overdue: AED 45,000</span>
-              </div>
+              {(summary?.totalAccountsPayable || 0) > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-rose-600 font-medium bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full">
+                    Outstanding
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -719,7 +720,7 @@ export default function AccountsPage({ overrideTab }: { overrideTab?: string }) 
               </div>
               <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Balance Sheet</h3>
               <p className="text-sm text-slate-500 mb-4">View assets, liabilities, and equity as of any date</p>
-              <Link href="/reports/balance-sheet" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
+              <Link href="/reports?tab=13" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
                 Generate Report <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -729,7 +730,7 @@ export default function AccountsPage({ overrideTab }: { overrideTab?: string }) 
               </div>
               <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Profit & Loss</h3>
               <p className="text-sm text-slate-500 mb-4">Revenue, expenses, and net income for any period</p>
-              <Link href="/reports/profit-loss" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
+              <Link href="/reports?tab=12" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
                 Generate Report <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -739,7 +740,7 @@ export default function AccountsPage({ overrideTab }: { overrideTab?: string }) 
               </div>
               <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Cash Flow</h3>
               <p className="text-sm text-slate-500 mb-4">Operating, investing, and financing activities</p>
-              <Link href="/reports/cash-flow" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
+              <Link href="/reports?tab=14" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
                 Generate Report <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -749,7 +750,7 @@ export default function AccountsPage({ overrideTab }: { overrideTab?: string }) 
               </div>
               <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2">Aged Receivables</h3>
               <p className="text-sm text-slate-500 mb-4">Customer balances by aging period</p>
-              <Link href="/reports/aged-receivables" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
+              <Link href="/reports?tab=4" className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700">
                 Generate Report <ArrowRight className="w-4 h-4" />
               </Link>
             </div>

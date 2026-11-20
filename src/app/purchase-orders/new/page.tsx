@@ -859,7 +859,7 @@ export default function NewPurchaseOrderPage() {
             <div className="p-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Discount Amount (AED)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Discount Amount ({formData.currency})</label>
                   <input
                     type="number"
                     min="0"
@@ -870,7 +870,7 @@ export default function NewPurchaseOrderPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Shipping (AED)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Shipping ({formData.currency})</label>
                   <input
                     type="number"
                     min="0"
@@ -881,7 +881,7 @@ export default function NewPurchaseOrderPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Other Expenses (AED)</label>
+                  <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Other Expenses ({formData.currency})</label>
                   <input
                     type="number"
                     min="0"

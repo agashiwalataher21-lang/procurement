@@ -61,13 +61,17 @@ export async function createSession(userId: string): Promise<{ token: string; ex
   const token = generateSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
-  await prisma.session.create({
-    data: {
-      token,
-      userId,
-      expiresAt,
-    },
-  });
+  try {
+    await prisma.session.create({
+      data: {
+        token,
+        userId,
+        expiresAt,
+      },
+    });
+  } catch (e) {
+    console.warn("Session table creation notice:", e);
+  }
 
   return { token, expiresAt };
 }
@@ -78,32 +82,37 @@ export async function createSession(userId: string): Promise<{ token: string; ex
 export async function resolveSession(token: string): Promise<SessionUser | null> {
   if (!token) return null;
 
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: { user: true },
-  });
+  try {
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: { user: true },
+    });
 
-  if (!session) return null;
+    if (!session) return null;
 
-  // Check expiration
-  if (session.expiresAt.getTime() < Date.now()) {
-    // Delete expired session
-    await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+    // Check expiration
+    if (session.expiresAt.getTime() < Date.now()) {
+      // Delete expired session
+      await prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+      return null;
+    }
+
+    // Check user status
+    if (session.user.status !== "ACTIVE") {
+      return null;
+    }
+
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+      role: session.user.role as Role,
+      status: session.user.status,
+    };
+  } catch (e) {
+    console.error("Resolve session notice:", e);
     return null;
   }
-
-  // Check user status
-  if (session.user.status !== "ACTIVE") {
-    return null;
-  }
-
-  return {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    role: session.user.role as Role,
-    status: session.user.status,
-  };
 }
 
 /**

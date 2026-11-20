@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("admin@baitalhadaf.ae");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("Password123!");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

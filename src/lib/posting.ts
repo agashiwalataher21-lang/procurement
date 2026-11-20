@@ -231,10 +231,6 @@ export async function postSupplierPayment(
           paymentId: payment.id,
         },
       });
-      await tx.bankAccount.update({
-        where: { id: bankAccountId },
-        data: { openingBalance: { decrement: paymentAedFils } },
-      });
     } catch (e) {
       console.warn("Bank transaction mirror notice:", e);
     }

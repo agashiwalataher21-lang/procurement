@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const { user, errorResponse } = await requireAuth(request);
+    if (errorResponse) return errorResponse;
+
     // Real data from Prisma — no mock figures
     const now = new Date();
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
-    const [invoices, payments, bankAccounts, products] = await Promise.all([
+    const [invoices, payments, bankAccounts, products, salesInvoices, expenses] = await Promise.all([
       prisma.purchaseInvoice.findMany({
         where: { status: { not: "CANCELLED" } },
         include: {
@@ -21,9 +25,17 @@ export async function GET(request: NextRequest) {
       prisma.payment.findMany({ where: { status: "APPROVED" }, include: { supplier: true }, orderBy: { paymentDate: "desc" }, take: 200 }),
       prisma.bankAccount.findMany({ where: { status: "ACTIVE" }, include: { transactions: true } }),
       prisma.product.findMany({ where: { status: "ACTIVE" } }),
+      prisma.salesInvoice.findMany({
+        where: { status: { in: ["ISSUED", "PAID", "PARTIALLY_PAID"] } },
+        include: {
+          items: { include: { product: true } },
+          payments: { where: { status: "APPROVED" } },
+        },
+      }),
+      prisma.expense.findMany({ where: { status: "PAID" } }),
     ]);
 
-    // Accounts Payable: outstanding invoices taking direct payments & PO advances into account, converted to base AED
+    // 1. Accounts Payable: outstanding invoices taking direct payments & PO advances into account, converted to base AED
     let totalAccountsPayable = 0;
     invoices.forEach((inv) => {
       const directPaid = inv.payments.reduce((s, p) => s + p.amount, 0);
@@ -38,7 +50,15 @@ export async function GET(request: NextRequest) {
       totalAccountsPayable += (netRemainingFils / 100) * rate;
     });
 
-    // Bank / cash balances from Banking module (stored in fils)
+    // 2. Accounts Receivable: real outstanding customer sales invoices in AED
+    let totalAccountsReceivable = 0;
+    salesInvoices.forEach((inv) => {
+      const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+      const remainingFils = Math.max(0, inv.grandTotal - paid);
+      totalAccountsReceivable += (remainingFils / 100) * (inv.exchangeRate || 1.0);
+    });
+
+    // 3. Bank / cash balances from Banking module (stored in fils)
     let totalBank = 0;
     let totalCash = 0;
     bankAccounts.forEach((a) => {
@@ -50,15 +70,30 @@ export async function GET(request: NextRequest) {
       else totalBank += balance;
     });
 
-    // Inventory value in standard currency units (defaultPurchasePrice is in fils)
-    const inventoryValue = products.reduce((s, p) => s + p.currentStock * ((p.defaultPurchasePrice || 0) / 100), 0);
-    const totalRevenue = inventoryValue;
-    // Expenses: actual invoice bills converted to AED
-    const totalExpenses = invoices.reduce((s, i) => s + (i.grandTotal / 100) * (i.exchangeRate || 1.0), 0);
-    const netProfit = totalRevenue - totalExpenses;
+    // 4. Real Revenue from posted Sales Invoices
+    const totalRevenue = salesInvoices.reduce((sum, inv) => {
+      return sum + (inv.grandTotal / 100) * (inv.exchangeRate || 1.0);
+    }, 0);
 
-    // Accounts Receivable — no customer sales model; keep 0 rather than inventing data
-    const totalAccountsReceivable = 0;
+    // 5. Cost of Goods Sold (COGS) from inventory costs of sold items
+    let totalCOGS = 0;
+    salesInvoices.forEach((inv) => {
+      const rate = inv.exchangeRate || 1.0;
+      inv.items.forEach((item) => {
+        const costPerUnit = item.product ? (item.product.defaultPurchasePrice || 0) / 100 : 0;
+        totalCOGS += item.quantity * costPerUnit * rate;
+      });
+    });
+
+    // 6. Operating Expenses from posted Expense records
+    const totalOperatingExpenses = expenses.reduce((sum, exp) => sum + exp.amount / 100, 0);
+
+    // 7. Gross & Net Profit
+    const grossProfit = totalRevenue - totalCOGS;
+    const netProfit = grossProfit - totalOperatingExpenses;
+
+    // 8. Inventory Valuation (Asset, not Revenue)
+    const inventoryValue = products.reduce((s, p) => s + p.currentStock * ((p.defaultPurchasePrice || 0) / 100), 0);
 
     const recentTransactions = payments.slice(0, 8).map((p) => {
       const rate = p.exchangeRate || 1.0;
@@ -102,11 +137,14 @@ export async function GET(request: NextRequest) {
       summary: {
         totalCash: Number(totalCash.toFixed(2)),
         totalBank: Number(totalBank.toFixed(2)),
-        totalAccountsReceivable,
+        totalAccountsReceivable: Number(totalAccountsReceivable.toFixed(2)),
         totalAccountsPayable: Number(totalAccountsPayable.toFixed(2)),
         totalRevenue: Number(totalRevenue.toFixed(2)),
-        totalExpenses: Number(totalExpenses.toFixed(2)),
+        totalExpenses: Number(totalOperatingExpenses.toFixed(2)),
+        totalCOGS: Number(totalCOGS.toFixed(2)),
+        grossProfit: Number(grossProfit.toFixed(2)),
         netProfit: Number(netProfit.toFixed(2)),
+        inventoryValue: Number(inventoryValue.toFixed(2)),
       },
       recentTransactions: allTx,
     };
@@ -115,7 +153,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       },
     });
   } catch (error) {

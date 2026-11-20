@@ -37,10 +37,39 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
 
 export default function UsersPermissionsPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "STAFF" as string, status: "ACTIVE" as string });
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "VIEWER" as string, status: "ACTIVE" as string });
+
+  React.useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Failed to load users");
+      const data = await res.json();
+      const mapped = (data.users || []).map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        lastLogin: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString() : "Never",
+        permissions: ROLE_PERMISSIONS[u.role] || [],
+      }));
+      setUsers(mapped);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Failed to load users from database");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredUsers = users.filter((u) => {
     return (
@@ -50,55 +79,99 @@ export default function UsersPermissionsPage() {
     );
   });
 
-  const handleUpdateRole = (userId: string, newRole: string) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              role: newRole as any,
-              permissions: ROLE_PERMISSIONS[newRole] || [],
-            }
-          : u
-      )
-    );
-    toast.success("User role updated successfully");
-  };
+  const handleUpdateRole = async (userId: string, newRole: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update role");
 
-  const handleUpdateStatus = (userId: string, newStatus: string) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: newStatus as any } : u))
-    );
-    toast.success("User status updated");
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    if (confirm("Are you sure you want to delete this user?")) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      toast.success("User deleted successfully");
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                role: newRole as any,
+                permissions: ROLE_PERMISSIONS[newRole] || [],
+              }
+            : u
+        )
+      );
+      toast.success("User role saved to database");
+    } catch (e: any) {
+      toast.error(e.message);
     }
   };
 
-  const handleAddUser = () => {
+  const handleUpdateStatus = async (userId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update status");
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status: newStatus as any } : u))
+      );
+      toast.success("User status saved to database");
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (confirm("Are you sure you want to deactivate this user?")) {
+      try {
+        const res = await fetch(`/api/users/${userId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to deactivate user");
+
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, status: "INACTIVE" } : u))
+        );
+        toast.success("User deactivated successfully");
+      } catch (e: any) {
+        toast.error(e.message);
+      }
+    }
+  };
+
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email) {
       toast.error("Name and email are required");
       return;
     }
 
-    const user: User = {
-      id: `usr-${Date.now().toString().slice(-4)}`,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role as any,
-      status: newUser.status as any,
-      lastLogin: "Never",
-      permissions: ROLE_PERMISSIONS[newUser.role] || [],
-    };
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password || "TempPass123!",
+          role: newUser.role,
+          status: newUser.status,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create user");
 
-    setUsers([...users, user]);
-    setShowAddModal(false);
-    setNewUser({ name: "", email: "", role: "STAFF", status: "ACTIVE" });
-    toast.success("New user created successfully");
+      setShowAddModal(false);
+      setNewUser({ name: "", email: "", password: "", role: "VIEWER", status: "ACTIVE" });
+      toast.success("New user created in database successfully!");
+      fetchUsers();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   const getRoleColor = (role: string) => {

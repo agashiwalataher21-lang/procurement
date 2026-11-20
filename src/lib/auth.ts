@@ -129,53 +129,21 @@ export function getTokenFromRequest(req: Request | NextRequest): string | null {
 }
 
 /**
- * Get current session user from an incoming Request
+ * Get current session user from an incoming Request.
+ * Strictly resolves from database session token.
+ * Returns null if unauthenticated, expired, or invalid.
  */
 export async function getCurrentUser(req: Request | NextRequest): Promise<SessionUser | null> {
   const token = getTokenFromRequest(req);
-  if (token) {
-    const sessionUser = await resolveSession(token);
-    if (sessionUser) return sessionUser;
-  }
+  if (!token) return null;
 
-  // Fallback: auto-provision / resolve default admin user for seamless local ERP operation
-  try {
-    let admin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-    if (!admin) {
-      admin = await prisma.user.create({
-        data: {
-          email: "admin@baitalhadaf.ae",
-          name: "Admin",
-          passwordHash: hashPassword("Password123!"),
-          role: "ADMIN",
-          status: "ACTIVE",
-        },
-      }).catch(() => null);
-    }
-    if (admin) {
-      return {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-        role: admin.role as Role,
-        status: admin.status,
-      };
-    }
-  } catch (e) {
-    // ignore
-  }
-
-  return {
-    id: "default-admin",
-    email: "admin@baitalhadaf.ae",
-    name: "Admin",
-    role: "ADMIN",
-    status: "ACTIVE",
-  };
+  return await resolveSession(token);
 }
 
 /**
- * Helper to require a user from a request, falling back to a safe default if no users exist yet
+ * Require a valid authenticated user and optional role authorization from a request.
+ * Returns 401 if unauthenticated or session invalid.
+ * Returns 403 if role is not permitted.
  */
 export async function requireAuth(
   req: Request | NextRequest,
@@ -183,26 +151,11 @@ export async function requireAuth(
 ): Promise<{ user: SessionUser | null; errorResponse?: Response }> {
   const user = await getCurrentUser(req);
 
-  // If no user table has any rows, allow setup / bootstrapping
-  const userCount = await prisma.user.count();
-  if (userCount === 0) {
-    // System bootstrap state - return a pseudo admin for non-destructive operation
-    return {
-      user: {
-        id: "bootstrap-admin",
-        email: "admin@baitalhadaf.ae",
-        name: "Admin",
-        role: "ADMIN",
-        status: "ACTIVE",
-      },
-    };
-  }
-
   if (!user) {
     return {
       user: null,
       errorResponse: new Response(
-        JSON.stringify({ error: "Unauthorized: valid session required" }),
+        JSON.stringify({ error: "Unauthorized: Valid session required" }),
         { status: 401, headers: { "Content-Type": "application/json" } }
       ),
     };
@@ -213,7 +166,7 @@ export async function requireAuth(
       user: null,
       errorResponse: new Response(
         JSON.stringify({
-          error: `Forbidden: requires one of [${allowedRoles.join(", ")}], but your role is ${user.role}`,
+          error: `Forbidden: Requires one of [${allowedRoles.join(", ")}], but your role is ${user.role}`,
         }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       ),

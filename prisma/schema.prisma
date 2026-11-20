@@ -71,6 +71,7 @@ model Product {
   salesItems               SalesInvoiceItem[]
   stockMovements           StockMovement[]
   quotations               SupplierQuotation[]
+  storeStocks              StoreStock[]
 }
 
 model PurchaseOrder {
@@ -170,6 +171,7 @@ model GoodsReceivedNote {
   purchaseOrder   PurchaseOrder    @relation(fields: [poId], references: [id])
   items           GrnItem[]
   purchaseReturns PurchaseReturn[]
+  invoices        PurchaseInvoice[]
 }
 
 model GrnItem {
@@ -213,6 +215,7 @@ model PurchaseInvoice {
   payments            Payment[]
   purchaseOrder       PurchaseOrder? @relation(fields: [poId], references: [id])
   supplier            Supplier       @relation(fields: [supplierId], references: [id])
+  goodsReceivedNote   GoodsReceivedNote? @relation(fields: [grnId], references: [id])
 
   @@index([invoiceDate])
   @@index([supplierId])
@@ -641,5 +644,29 @@ model Currency {
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
 }
+
+model Store {
+  id          String       @id @default(cuid())
+  storeCode   String       @unique
+  storeName   String
+  location    String?
+  isDefault   Boolean      @default(false)
+  status      String       @default("ACTIVE")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  stocks      StoreStock[]
+}
+
+model StoreStock {
+  id          String   @id @default(cuid())
+  storeId     String
+  productId   String
+  quantity    Float    @default(0.0)
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
+}
+
 
 

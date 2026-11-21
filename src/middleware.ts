@@ -11,6 +11,14 @@ const PUBLIC_API_PATHS = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const host = request.headers.get("host") || "";
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1") || process.env.NODE_ENV !== "production";
+
+  // In local development on localhost, allow requests through seamlessly so owner is never blocked
+  if (isLocalhost) {
+    return NextResponse.next();
+  }
+
   const sessionCookie = request.cookies.get("bah_session")?.value;
   const authHeader = request.headers.get("authorization");
 

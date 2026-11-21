@@ -12,11 +12,11 @@ export async function GET() {
     // Purchase Orders Stats
     const [monthlyPOs, yearlyPOs, pendingPOs, approvedPOs] = await Promise.all([
       prisma.purchaseOrder.findMany({
-        where: { orderDate: { gte: startOfMonth } },
+        where: { orderDate: { gte: startOfMonth }, status: { not: "CANCELLED" } },
         include: { supplier: true },
       }),
       prisma.purchaseOrder.findMany({
-        where: { orderDate: { gte: startOfYear } },
+        where: { orderDate: { gte: startOfYear }, status: { not: "CANCELLED" } },
       }),
       prisma.purchaseOrder.count({ where: { status: "PENDING_APPROVAL" } }),
       prisma.purchaseOrder.count({ where: { status: "APPROVED" } }),
@@ -32,11 +32,11 @@ export async function GET() {
     // Goods Received Stats - include items to calculate totals
     const [monthlyGRNs, yearlyGRNs] = await Promise.all([
       prisma.goodsReceivedNote.findMany({
-        where: { receivedDate: { gte: startOfMonth } },
+        where: { receivedDate: { gte: startOfMonth }, status: { not: "CANCELLED" } },
         include: { items: true, purchaseOrder: { include: { items: true } } },
       }),
       prisma.goodsReceivedNote.findMany({
-        where: { receivedDate: { gte: startOfYear } },
+        where: { receivedDate: { gte: startOfYear }, status: { not: "CANCELLED" } },
         include: { items: true, purchaseOrder: { include: { items: true } } },
       }),
     ]);
@@ -69,11 +69,11 @@ export async function GET() {
     // Invoice & Payment Stats
     const [allUnpaidInvoices, overdueInvoices, pendingPayments, completedPayments] = await Promise.all([
       prisma.purchaseInvoice.findMany({
-        where: { status: { not: "PAID" } },
+        where: { status: { notIn: ["PAID", "CANCELLED"] } },
       }),
       prisma.purchaseInvoice.findMany({
         where: {
-          status: { not: "PAID" },
+          status: { notIn: ["PAID", "CANCELLED"] },
           dueDate: { lt: now },
         },
         include: { payments: { where: { status: "APPROVED" } } },

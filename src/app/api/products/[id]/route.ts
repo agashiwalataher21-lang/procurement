@@ -153,6 +153,8 @@ export async function DELETE(
       await tx.grnItem.updateMany({ where: { productId: params.id }, data: { productId: null } });
       await tx.invoiceItem.updateMany({ where: { productId: params.id }, data: { productId: null } });
       await tx.salesInvoiceItem.updateMany({ where: { productId: params.id }, data: { productId: null } });
+      await tx.storeStock.deleteMany({ where: { productId: params.id } });
+      await tx.stockTransferItem.deleteMany({ where: { productId: params.id } });
       await tx.stockMovement.deleteMany({ where: { productId: params.id } });
       await tx.supplierQuotation.deleteMany({ where: { productId: params.id } });
       await tx.product.delete({ where: { id: params.id } });

@@ -15,7 +15,11 @@ export async function GET(request: Request) {
     const where: any = {};
     if (poId) where.poId = poId;
     if (supplierId) where.supplierId = supplierId;
-    if (status) where.status = status;
+    if (status && status !== "ALL") {
+      where.status = status;
+    } else if (!status || status === "ALL") {
+      where.status = { not: "CANCELLED" };
+    }
     if (search) {
       where.OR = [
         { invoiceNumber: { contains: search } },

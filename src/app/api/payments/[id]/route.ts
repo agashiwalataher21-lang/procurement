@@ -159,15 +159,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
-    await prisma.payment.delete({
-      where: { id: params.id },
-    });
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated journal entries
+      const journals = await tx.journalEntry.findMany({
+        where: { sourceType: "PAYMENT", sourceId: params.id },
+        select: { id: true },
+      });
+      if (journals.length > 0) {
+        const jIds = journals.map((j: any) => j.id);
+        await tx.journalLine.deleteMany({ where: { journalId: { in: jIds } } });
+        await tx.journalEntry.deleteMany({ where: { id: { in: jIds } } });
+      }
 
-    await prisma.document.updateMany({
-      where: { paymentId: params.id },
-      data: {
-        title: `Payment Receipt - ${payment.paymentNumber} (DELETED)`,
-      },
+      // 2. Delete linked documents
+      await tx.document.deleteMany({ where: { paymentId: params.id } });
+
+      // 3. Delete payment
+      await tx.payment.delete({ where: { id: params.id } });
     });
 
     await prisma.auditLog.create({

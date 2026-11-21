@@ -217,23 +217,52 @@ export async function DELETE(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Check if invoice has related records (payments)
-    const paymentCount = await prisma.payment.count({ where: { invoiceId: params.id } });
-
-    if (paymentCount > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete invoice with payments. Void instead." },
-        { status: 400 }
-      );
-    }
-
     const user = await getCurrentUser(request);
     const actorName = user?.name || "Admin";
 
     await prisma.$transaction(async (tx) => {
+      // 1. Delete linked journal lines & entries
+      const journals = await tx.journalEntry.findMany({
+        where: { sourceType: "INVOICE", sourceId: params.id },
+        select: { id: true },
+      });
+      if (journals.length > 0) {
+        const jIds = journals.map((j: any) => j.id);
+        await tx.journalLine.deleteMany({ where: { journalId: { in: jIds } } });
+        await tx.journalEntry.deleteMany({ where: { id: { in: jIds } } });
+      }
+
+      // 2. Unlink or delete direct invoice payments & their journals
+      const directPayments = await tx.payment.findMany({ where: { invoiceId: params.id } });
+      for (const p of directPayments) {
+        const pJournals = await tx.journalEntry.findMany({ where: { sourceType: "PAYMENT", sourceId: p.id }, select: { id: true } });
+        if (pJournals.length > 0) {
+          const pjIds = pJournals.map((j: any) => j.id);
+          await tx.journalLine.deleteMany({ where: { journalId: { in: pjIds } } });
+          await tx.journalEntry.deleteMany({ where: { id: { in: pjIds } } });
+        }
+        await tx.document.deleteMany({ where: { paymentId: p.id } });
+        await tx.payment.delete({ where: { id: p.id } });
+      }
+
+      // 3. Delete documents and line items
       await tx.document.deleteMany({ where: { invoiceId: params.id } });
       await tx.invoiceItem.deleteMany({ where: { invoiceId: params.id } });
+
+      // 4. Delete the invoice itself
       await tx.purchaseInvoice.delete({ where: { id: params.id } });
+
+      // 5. Update linked PO status if applicable
+      if (invoice.poId) {
+        const remainingInvoices = await tx.purchaseInvoice.findMany({
+          where: { poId: invoice.poId },
+        });
+        const newStatus = remainingInvoices.length === 0 ? "APPROVED" : "PARTIALLY_INVOICED";
+        await tx.purchaseOrder.update({
+          where: { id: invoice.poId },
+          data: { status: newStatus },
+        });
+      }
     });
 
     // Audit log
@@ -243,11 +272,11 @@ export async function DELETE(
         module: "Purchase Invoices",
         transactionNumber: invoice.invoiceNumber,
         action: "DELETE_INVOICE",
-        updatedValue: `Deleted invoice ${invoice.invoiceNumber} (${invoice.supplier?.currency || 'AED'} ${(invoice.grandTotal / 100).toFixed(2)})`,
+        updatedValue: `Deleted invoice ${invoice.invoiceNumber} (${invoice.supplier?.currency || 'AED'} ${(invoice.grandTotal / 100).toFixed(2)}) and reversed all general ledger entries`,
       },
     });
 
-    return NextResponse.json({ message: "Invoice deleted successfully" });
+    return NextResponse.json({ message: "Invoice deleted successfully and general ledger updated" });
   } catch (error) {
     console.error("Error deleting invoice:", error);
     return NextResponse.json({ error: "Failed to delete invoice" }, { status: 500 });

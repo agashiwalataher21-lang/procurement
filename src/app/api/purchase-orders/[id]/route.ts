@@ -231,86 +231,77 @@ export async function DELETE(
       documents: po.documents.length,
     };
 
-    // Void child records (soft-delete, create reversals)
-    await prisma.$transaction([
-      // Void invoices (soft-delete + reverse journal)
-      prisma.purchaseInvoice.updateMany({
-        where: { poId: params.id, status: { not: "CANCELLED" } },
-        data: { status: "CANCELLED" },
-      }),
-      // Void GRNs (soft-delete + reverse journal)
-      prisma.goodsReceivedNote.updateMany({
-        where: { poId: params.id, status: { not: "CANCELLED" } },
-        data: { status: "CANCELLED" },
-      }),
-      // Void payments (soft-delete + reverse journal)
-      prisma.payment.updateMany({
-        where: { poId: params.id, status: { not: "CANCELLED" } },
-        data: { status: "CANCELLED" },
-      }),
-      // Void purchase returns
-      prisma.purchaseReturn.updateMany({
-        where: { poId: params.id, status: { not: "CANCELLED" } },
-        data: { status: "CANCELLED" },
-      }),
-      // Void landed costs
-      prisma.landedCost.updateMany({
-        where: { poId: params.id, status: { not: "CANCELLED" } },
-        data: { status: "CANCELLED" },
-      }),
-      // Delete documents (no journal)
-      prisma.document.deleteMany({ where: { poId: params.id } }),
-      // Soft-delete PO itself → voided (keep master for audit)
-      prisma.purchaseOrder.update({
-        where: { id: params.id },
-        data: { status: "CANCELLED" },
-      }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      const allLinkedInvoiceIds = po.invoices.map((i: any) => i.id);
+      const allLinkedGrnIds = po.grns.map((g: any) => g.id);
+      const allLinkedPaymentIds = po.payments.map((p: any) => p.id);
+      const allSourceIds = [params.id, ...allLinkedInvoiceIds, ...allLinkedGrnIds, ...allLinkedPaymentIds];
 
-    // Write reversal journals manually
-    const journals = await prisma.journalEntry.findMany({
-      where: {
-        sourceType: { in: ["INVOICE", "GRN", "PAYMENT"] },
-        sourceId: { in: [...po.invoices.map((i: any) => i.id), ...po.grns.map((g: any) => g.id), ...po.payments.map((p: any) => p.id)] },
-        status: "POSTED",
-      },
+      // 1. Delete all associated journal lines and entries
+      const journals = await tx.journalEntry.findMany({
+        where: {
+          OR: [
+            { sourceId: { in: allSourceIds } },
+            { sourceType: "PURCHASE_ORDER", sourceId: params.id },
+          ],
+        },
+        select: { id: true },
+      });
+      if (journals.length > 0) {
+        const jIds = journals.map((j: any) => j.id);
+        await tx.journalLine.deleteMany({ where: { journalId: { in: jIds } } });
+        await tx.journalEntry.deleteMany({ where: { id: { in: jIds } } });
+      }
+
+      // 2. Delete child documents
+      await tx.document.deleteMany({
+        where: {
+          OR: [
+            { poId: params.id },
+            { invoiceId: { in: allLinkedInvoiceIds } },
+            { grnId: { in: allLinkedGrnIds } },
+            { paymentId: { in: allLinkedPaymentIds } },
+          ],
+        },
+      });
+
+      // 3. Delete returns & landed costs
+      await tx.purchaseReturnItem.deleteMany({ where: { purchaseReturn: { poId: params.id } } });
+      await tx.purchaseReturn.deleteMany({ where: { poId: params.id } });
+      await tx.landedCostItem.deleteMany({ where: { landedCost: { poId: params.id } } });
+      await tx.landedCost.deleteMany({ where: { poId: params.id } });
+
+      // 4. Delete payments
+      await tx.payment.deleteMany({ where: { poId: params.id } });
+
+      // 5. Delete invoices & items
+      await tx.invoiceItem.deleteMany({ where: { invoiceId: { in: allLinkedInvoiceIds } } });
+      await tx.purchaseInvoice.deleteMany({ where: { poId: params.id } });
+
+      // 6. Delete GRNs & items
+      await tx.grnItem.deleteMany({ where: { grnId: { in: allLinkedGrnIds } } });
+      await tx.goodsReceivedNote.deleteMany({ where: { poId: params.id } });
+
+      // 7. Delete PO items & PO itself
+      await tx.purchaseOrderItem.deleteMany({ where: { poId: params.id } });
+      await tx.purchaseOrder.delete({ where: { id: params.id } });
     });
-    for (const j of journals) {
-      await reverseAllForSource(prisma, [j.sourceType], j.sourceId!);
-    }
 
     // Audit log
-    try {
-      await prisma.auditLog.create({
-        data: {
-          employeeName: "Taher",
-          module: "Purchase Orders",
-          transactionNumber: po.poNumber,
-          action: "VOID_PO",
-          updatedValue: `Voided PO ${po.poNumber} (${po.currency} ${po.grandTotal.toFixed(2)}). Deleted all linked transactions: ${summary.grns} GRN(s), ${summary.invoices} invoice(s), ${summary.payments} payment(s), ${summary.returns} return(s), ${summary.landedCosts} landed cost(s)`,
-        },
-      });
-    } catch (e) {
-      console.warn("Audit log failed for PO void", e);
-    }
-
-    try {
-      await prisma.notification.create({
-        data: {
-          title: "Purchase Order Voided",
-          message: `${po.poNumber} voided and all linked transactions reversed.`,
-          type: "WARNING",
-          linkUrl: "/purchase-orders",
-        },
-      });
-    } catch (e) {
-      console.warn("Notification failed for PO void", e);
-    }
+    await prisma.auditLog.create({
+      data: {
+        employeeName: "Admin",
+        module: "Purchase Orders",
+        transactionNumber: po.poNumber,
+        action: "DELETE_PO",
+        updatedValue: `Deleted PO ${po.poNumber} (${po.currency} ${(po.grandTotal / 100).toFixed(2)}) and all associated invoices, GRNs, and payments.`,
+      },
+    });
 
     return NextResponse.json({
-      message: "Purchase Order voided successfully. All linked transactions reversed (journals cancelled).",
-      voided: true,
-      deleted: summary,
+      message: "Purchase Order and all associated records deleted successfully.",
+      deleted: true,
+      summary,
     });
   } catch (error) {
     console.error("Error voiding purchase order:", error);

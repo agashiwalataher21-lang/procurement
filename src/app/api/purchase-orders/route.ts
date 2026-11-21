@@ -23,6 +23,8 @@ export async function GET(request: Request) {
 
     if (status && status !== "ALL") {
       where.status = status;
+    } else if (!status || status === "ALL") {
+      where.status = { not: "CANCELLED" };
     }
 
     if (supplierId) {
